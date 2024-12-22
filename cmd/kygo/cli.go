@@ -4,6 +4,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log/slog"
@@ -13,10 +14,34 @@ import (
 
 	"github.com/golingon/lingon/pkg/kube"
 	"github.com/golingon/lingon/pkg/kubeutil"
-	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	apiextensionsbeta "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubescheme "k8s.io/client-go/kubernetes/scheme"
+
+	certmanager "github.com/cert-manager/cert-manager/pkg/api"
+	externalsecretsv1beta1 "github.com/external-secrets/external-secrets/apis/externalsecrets/v1beta1"
+	traefikv1alpha1 "github.com/traefik/traefik/v3/pkg/provider/kubernetes/crd/traefikio/v1alpha1"
+	metallbv1beta2 "go.universe.tf/metallb/api/v1beta2"
+	apiextensions "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
+	apiextensionsbeta "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
+	// helmv2 "github.com/fluxcd/helm-controller/api/v2beta1"
+	// profilev1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1"
+	// profilev1beta1 "github.com/kubeflow/kubeflow/components/profile-controller/api/v1beta1"
+	// metacontrolleralpha "github.com/metacontroller/metacontroller/pkg/apis/metacontroller/v1alpha1"
+	// otelv1alpha1 "github.com/open-telemetry/opentelemetry-operator/apis/v1alpha1"
+	// slothv1alpha1 "github.com/slok/sloth/pkg/kubernetes/api/sloth/v1"
+	// tektonpipelinesv1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
+	// tektontriggersv1alpha1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	// istionetworkingv1alpha3 "istio.io/client-go/pkg/apis/networking/v1alpha3"
+	// istionetworkingv1beta1 "istio.io/client-go/pkg/apis/networking/v1beta1"
+	// istiosecurityv1beta1 "istio.io/client-go/pkg/apis/security/v1beta1"
+	// utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	// knativecachingalpha1 "knative.dev/caching/pkg/apis/caching/v1alpha1"
+	// knativeservingv1 "knative.dev/serving/pkg/apis/serving/v1"
+	// capiahelm "sigs.k8s.io/cluster-api-addon-provider-helm/api/v1alpha1"
+	// gatewayv1alpha2 "sigs.k8s.io/gateway-api/apis/v1alpha2"
+	// gatewayv1beta1 "sigs.k8s.io/gateway-api/apis/v1beta1"
+	// secretsstorev1 "sigs.k8s.io/secrets-store-csi-driver/apis/v1"
 )
 
 const crdMsg = "IF there is an issue with CRDs. Please visit this page to solve it https://github.com/golingon/lingon/tree/main/docs/kubernetes/crd"
@@ -116,8 +141,30 @@ func main() {
 
 func defaultSerializer() runtime.Decoder {
 	// ADD MORE CRDS HERE
-	_ = apiextensions.AddToScheme(kubescheme.Scheme)
-	_ = apiextensionsbeta.AddToScheme(kubescheme.Scheme)
+	var (
+		errs []error
+	)
+
+	errs = append(errs,
+		certmanager.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		externalsecretsv1beta1.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		apiextensions.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		apiextensionsv1.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		apiextensionsbeta.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		traefikv1alpha1.AddToScheme(kubescheme.Scheme))
+	errs = append(errs,
+		metallbv1beta2.AddToScheme(kubescheme.Scheme))
+
+	if err := errors.Join(errs...); err != nil {
+		slog.Error("add to scheme", "error", err)
+		os.Exit(1)
+	}
+
 	return kubescheme.Codecs.UniversalDeserializer()
 }
 
